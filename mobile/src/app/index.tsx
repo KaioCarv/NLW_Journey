@@ -6,7 +6,7 @@ import {
   Settings2,
   UserRoundPlus
 } from 'lucide-react-native';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Image, Keyboard, Text, View } from "react-native";
 
 import { colors } from "@/styles/colors";
@@ -16,6 +16,7 @@ import { Button } from "@/components/button";
 import { Calendar } from '@/components/calendar';
 import { GuestEmail } from '@/components/email';
 import { Input } from "@/components/input";
+import { Loading } from '@/components/loading';
 import { Modal } from '@/components/modal';
 import { tripServer } from '@/server/trip-server';
 import { tripStorage } from '@/storage/trip';
@@ -38,6 +39,7 @@ enum MODAL {
 export default function Index() {
 // LOADING
 const [isCreatingTrip, setIsCreatingTrip] = useState(false)
+const [isGettingTrip, setIsGettingTrip] = useState(true)
 
 //DATA
 const [stepForm, setStepForm] = useState(StepForm.TRIP_DETAILS)
@@ -148,6 +150,34 @@ async function createTrip(){
     console.log(error) 
     setIsCreatingTrip(false)
   }
+}
+
+async function getTrip(){
+  try{
+   const tripID = await tripStorage.get()
+
+   if(!tripID){
+    return setIsGettingTrip(false)
+   }
+
+   const trip = await tripServer.getById(tripID)
+
+   if (trip) {
+    return router.navigate("/trip/" + trip.id)
+   }
+
+  }catch (error){
+    setIsGettingTrip(false)
+    console.log(error)
+  }
+}
+
+useEffect(() => {
+  getTrip()
+}, [])
+
+if(isGettingTrip){
+  return <Loading />
 }
 
   return (
