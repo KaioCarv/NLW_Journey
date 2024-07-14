@@ -17,8 +17,11 @@ import { Calendar } from '@/components/calendar';
 import { GuestEmail } from '@/components/email';
 import { Input } from "@/components/input";
 import { Modal } from '@/components/modal';
+import { tripServer } from '@/server/trip-server';
+import { tripStorage } from '@/storage/trip';
 import { validateInput } from '@/utils/validateInput';
 import dayjs from 'dayjs';
+import { router } from 'expo-router';
 import { DateData } from 'react-native-calendars';
 
 enum StepForm {
@@ -33,6 +36,9 @@ enum MODAL {
 }
 
 export default function Index() {
+// LOADING
+const [isCreatingTrip, setIsCreatingTrip] = useState(false)
+
 //DATA
 const [stepForm, setStepForm] = useState(StepForm.TRIP_DETAILS)
 const [selectedDates, setSelectedDates] = useState({} as DatesSelected)
@@ -65,6 +71,17 @@ if(destination.length < 4 ){
  if(stepForm === StepForm.TRIP_DETAILS){
   return setStepForm(StepForm.ADD_EMAIL)
  }
+
+ Alert.alert("Nova viagem", "Confirmar viagem?", [
+  {
+    text: "Não",
+    style: "cancel",
+  },
+  {
+    text: "Sim",
+    onPress: createTrip,
+  },
+ ])
 }
 
 function handleSelectDate(selectedDay: DateData){
@@ -96,6 +113,41 @@ function handleAddEmail(){
 
   setEmailsToInvite((prevState) => [...prevState, emailToInvite])
   setEmailToInvite("")
+}
+
+async function saveTrip(tripId: string){
+ try {
+   await tripStorage.save(tripId)
+   router.navigate("/trip/" + tripId)
+ } catch(error){
+  Alert.alert(
+    "Salvar viagem",
+     "Não foi possivel salvar o id da vaigem no dispositivo."
+    )
+    console.log(error)
+ }
+}
+
+async function createTrip(){
+  try{
+    setIsCreatingTrip(true)
+   const newTrip = await tripServer.create({
+    destination,
+    starts_at: dayjs(selectedDates.startsAt?.dateString).toString(),
+    ends_at: dayjs(selectedDates.endsAt?.dateString).toString(),
+    emails_to_invite: emailsToInvite
+   })
+
+   Alert.alert("Nova viagem", "Viagem criada com sucesso!", [
+    {
+      text: "OK. Continuar.",
+      onPress: () => saveTrip(newTrip.tripId)
+    },
+   ])
+  } catch(error){
+    console.log(error) 
+    setIsCreatingTrip(false)
+  }
 }
 
   return (
@@ -164,7 +216,7 @@ function handleAddEmail(){
       </Input>
       </>
     )}
-      <Button onPress={handleNextStepForm}>
+      <Button onPress={handleNextStepForm} isLoading={isCreatingTrip}>
           <Button.Title>
             {stepForm === StepForm.TRIP_DETAILS
               ? 'Continuar'
